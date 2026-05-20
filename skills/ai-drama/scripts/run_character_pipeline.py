@@ -20,26 +20,26 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 CHARACTERS = [
     {
         "name": "顾砚",
-        "face_prompt": "一位年轻英俊的亚洲男性，黑色短发精致偏分，黑色高定西装白色衬衫，暗纹领带，冷峻表情，portrait photo, neutral expression, clean solid color background, studio lighting, high detail, 2k",
-        "outfit_prompt": "黑色高定西装套装，白色衬衫，暗纹领带，黑色西裤，袖扣，纯白色背景俯视平铺，所有物品完整展示不裁切，clean white background, top-down flat lay, all items fully visible, detailed fabric texture, high detail, 2k",
+        "face_prompt": "一位年轻英俊的亚洲男性，黑色短发精致偏分，身着深色高定西装，暗纹领带，冷峻表情，Pixel Art style, cyberpunk aesthetic, pixelated portrait, clean solid color background, high detail, 2k",
+        "outfit_prompt": "黑色高定西装套装，白色衬衫，暗纹领带，黑色西裤，袖扣，纯白色背景俯视平铺，所有物品完整展示不裁切，Pixel Art style, cyberpunk flat lay aesthetic, pixelated fabric texture, high detail, 2k",
         "six_view_prompt": "参考图生图：请严格根据图片1中的角色，生成一张人物的六视图角色定妆照；不要出现文字，要求纯白色背景，有人物面部正面特写、人物面部45度侧面特写、人物面部背面特写、人物正面全身照、人物45度侧面全身照以及人物背面全身照。该人物穿着图片2中的服饰。注意：只输出成一张图片。",
     },
     {
         "name": "林浅浅",
-        "face_prompt": "一位年轻漂亮的亚洲女性，栗色长卷发精致盘发造型，香槟色亮面礼服裙收腰设计，银色细高跟，精致耳坠，表情傲慢轻蔑，portrait photo, neutral expression, clean solid color background, studio lighting, high detail, 2k",
-        "outfit_prompt": "香槟色亮面礼服裙，收腰设计，裙摆及膝，银色细高跟，精致耳坠，细项链，纯白色背景俯视平铺，所有物品完整展示不裁切，clean white background, top-down flat lay, all items fully visible, detailed fabric texture, high detail, 2k",
+        "face_prompt": "一位年轻漂亮的亚洲女性，栗色长卷发精致盘发造型，香槟色亮面礼服裙收腰设计，银色细高跟，精致耳坠，表情傲慢轻蔑，Pixel Art style, cyberpunk aesthetic, pixelated portrait, clean solid color background, high detail, 2k",
+        "outfit_prompt": "香槟色亮面礼服裙，收腰设计，裙摆及膝，银色细高跟，精致耳坠，细项链，纯白色背景俯视平铺，所有物品完整展示不裁切，Pixel Art style, cyberpunk flat lay aesthetic, pixelated fabric texture, high detail, 2k",
         "six_view_prompt": "参考图生图：请严格根据图片1中的角色，生成一张人物的六视图角色定妆照；不要出现文字，要求纯白色背景，有人物面部正面特写、人物面部45度侧面特写、人物面部背面特写、人物正面全身照、人物45度侧面全身照以及人物背面全身照。该人物穿着图片2中的服饰。注意：只输出成一张图片。",
     },
     {
         "name": "沈晚宁",
-        "face_prompt": "一位亚洲年轻女性，黑色长发自然垂落，米白色简约衬衫，深灰色直筒裙，黑色粗跟单鞋，表情被动尴尬，portrait photo, neutral expression, clean solid color background, studio lighting, high detail, 2k",
-        "outfit_prompt": "米白色简约衬衫，款式保守，深灰色直筒裙长度及膝，黑色粗跟单鞋，无明显配饰，纯白色背景俯视平铺，所有物品完整展示不裁切，clean white background, top-down flat lay, all items fully visible, detailed fabric texture, high detail, 2k",
+        "face_prompt": "一位亚洲年轻女性，黑色长发自然垂落，米白色简约衬衫，深灰色直筒裙，黑色粗跟单鞋，表情被动尴尬，Pixel Art style, cyberpunk aesthetic, pixelated portrait, clean solid color background, high detail, 2k",
+        "outfit_prompt": "米白色简约衬衫，款式保守，深灰色直筒裙长度及膝，黑色粗跟单鞋，无明显配饰，纯白色背景俯视平铺，所有物品完整展示不裁切，Pixel Art style, cyberpunk flat lay aesthetic, pixelated fabric texture, high detail, 2k",
         "six_view_prompt": "参考图生图：请严格根据图片1中的角色，生成一张人物的六视图角色定妆照；不要出现文字，要求纯白色背景，有人物面部正面特写、人物面部45度侧面特写、人物面部背面特写、人物正面全身照、人物45度侧面全身照以及人物背面全身照。该人物穿着图片2中的服饰。注意：只输出成一张图片。",
     },
     {
         "name": "我妈",
-        "face_prompt": "一位亚洲年长女性，花白短发微乱无造型感，洗到发白的藏青色旧棉褂手工布盘扣，褪色深灰色粗布裤子，黑色老式布鞋磨损严重，表情善良无措，portrait photo, neutral expression, clean solid color background, studio lighting, high detail, 2k",
-        "outfit_prompt": "洗到发白的藏青色旧棉褂，手工布盘扣，褪色深灰色粗布裤子，黑色老式布鞋磨损严重，旧布袋，纯白色背景俯视平铺，所有物品完整展示不裁切，clean white background, top-down flat lay, all items fully visible, detailed fabric texture, high detail, 2k",
+        "face_prompt": "一位亚洲年长女性，花白短发微乱无造型感，洗到发白的藏青色旧棉褂手工布盘扣，褪色深灰色粗布裤子，黑色老式布鞋磨损严重，表情善良无措，Pixel Art style, cyberpunk aesthetic, pixelated portrait, clean solid color background, high detail, 2k",
+        "outfit_prompt": "洗到发白的藏青色旧棉褂，手工布盘扣，褪色深灰色粗布裤子，黑色老式布鞋磨损严重，旧布袋，纯白色背景俯视平铺，所有物品完整展示不裁切，Pixel Art style, cyberpunk flat lay aesthetic, pixelated fabric texture, high detail, 2k",
         "six_view_prompt": "参考图生图：请严格根据图片1中的角色，生成一张人物的六视图角色定妆照；不要出现文字，要求纯白色背景，有人物面部正面特写、人物面部45度侧面特写、人物面部背面特写、人物正面全身照、人物45度侧面全身照以及人物背面全身照。该人物穿着图片2中的服饰。注意：只输出成一张图片。",
     },
 ]
@@ -47,8 +47,8 @@ CHARACTERS = [
 SCENE_PROMPT = (
     "豪华宴会厅，金色水晶吊灯垂悬中央，长条白色桌布宴会桌，精致银器餐具排列整齐，"
     "落地窗外暮色将至，红色帷幕装饰墙面，大理石地面反射暖光，空气中弥漫着花香，"
-    "Ghibli illustration, warm golden lighting, elegant atmosphere, "
-    "NO HUMANS NO CHARACTERS, no people, empty scene, detailed environment, cinematic lighting, high detail, 2k"
+    "Pixel Art style, cyberpunk city night, 俯视广角构图, high-saturation neon colors, "
+    "blocky pixel brushstrokes, NO HUMANS NO CHARACTERS, no people, empty scene, high detail, 2k"
 )
 
 SIX_VIEW_MULTI_PROMPT = (
@@ -57,8 +57,8 @@ SIX_VIEW_MULTI_PROMPT = (
     "右上：仰视天花板或顶部，展示顶部建筑设计与灯光细节，"
     "左下：近景特写，展示材质纹理与道具细节，"
     "右下：俯视鸟瞰，展示空间平面布局与动线，"
-    "NO HUMANS NO CHARACTERS，禁止出现任何人物，不要出现文字，"
-    "保持与原图一致的色调与光影风格，2k"
+    "NO HUMANS NO CHARACTERS，禁止出现任何人物，"
+    "保持Pixel Art风格，霓虹光影，块状像素笔触，不要出现文字，2k"
 )
 
 

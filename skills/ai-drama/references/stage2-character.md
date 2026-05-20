@@ -19,13 +19,15 @@
 
 **步骤1：生成面部图（文生图）**
 ```
-{prompt: [角色外观描述], portrait photo, neutral expression, clean solid color background, studio lighting, high detail}
+{角色外观描述},
+Pixel Art style, cyberpunk aesthetic, pixelated portrait, neutral expression,
+clean solid color background, studio lighting, high detail
 ```
 
 **步骤2：生成服装参考图（文生图，必须俯视平铺）**
 ```
 {prompt: [完整穿搭描述，包含上衣、下装、鞋、配件、道具等所有穿戴物]，
-纯白色背景俯视平铺，所有物品完整展示不裁切，每件物品保持完整轮廓和细节，
+纯白色背景俯视平铺，所有物品完整展示不裁切，每件物品保持完整轮廓和细节，Pixel Art style, cyberpunk flat lay aesthetic, pixelated fabric texture,
 clean white background, top-down flat lay, all items fully visible, detailed fabric texture, high detail。}
 ```
 

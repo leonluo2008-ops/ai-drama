@@ -21,10 +21,10 @@
 
 **Prompt结构**：
 ```
-[风格锁定的画风], [场景描述], [时间/天气], [氛围关键词],
-[风格锁定的色调体系], [风格锁定的质量规格],
-wide establishing panoramic shot, NO HUMANS NO CHARACTERS, no people,
-empty scene, detailed environment, cinematic lighting, high detail
+[风格锁定], [场景描述], [时间/天气], [氛围关键词],
+Pixel Art style, cyberpunk city night, pixelated urban environment,
+俯视广角构图, high-saturation neon colors, blocky pixel brushstrokes,
+NO HUMANS NO CHARACTERS, no people, empty scene, detailed environment, high detail
 ```
 
 **关键约束**：
@@ -41,7 +41,7 @@ empty scene, detailed environment, cinematic lighting, high detail
 左下：近景特写，展示材质纹理与道具细节，
 右下：俯视鸟瞰，展示空间平面布局与动线。
 NO HUMANS NO CHARACTERS，禁止出现任何人物。
-不要出现文字，保持与原图一致的色调与光影风格。
+保持Pixel Art风格，霓虹光影，块状像素笔触。不要出现文字。
 ```
 
 ## 场景卡格式

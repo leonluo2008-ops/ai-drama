@@ -133,14 +133,27 @@ python scripts/dreamina_generate.py \
 
 ## Stage-4：分镜导演
 
-**输入**：Stage-1的视频脚本 + Stage-2的角色卡 + Stage-3的场景卡
+**输入**：Stage-1的视频脚本 + 角色表 + 场景卡
 
-**执行**：
-1. 加载 `references/stage4-storyboard.md` 获取分镜导演Prompt模板
-2. 分析叙事类型，推荐叙事路径（等用户确认）
-3. 编排分镜方案（等用户确认）
-4. 生成宫格图（调用 `scripts/dreamina_generate.py` 逐格生成 + `scripts/stitch_grid.py` 拼合）
-5. 基于确认后的宫格图，输出视频Prompt + 音效Prompt + 台词Prompt
+**执行**（按场次逐场进行）：
+
+```
+Phase 0：选场次 → 用户确认
+Phase 1：镜头规划 → 输出「镜头规划表」→ 用户确认
+Phase 2：宫格编排 → 输出宫格方案 → 用户确认
+Phase 3：生成宫格图 → 发送用户 → 用户确认
+Phase 4：输出Prompt → 视频Prompt + 音效Prompt + 台词Prompt
+
+→ 循环，直到所有场次完成
+```
+
+**Phase 1 镜头规划**：根据剧本内容分析节奏（快/急/缓/静/张力），灵活决定镜头数量，输出「镜头规划表」（景别/运镜/画面内容/角色标注/台词承接）。详见 `references/stage4-storyboard.md`。
+
+**Phase 2 宫格编排**：根据镜头数量决定宫格布局，输出每格对应的镜头。
+
+**Phase 3 宫格图**：调用 `scripts/dreamina_generate.py` 逐格生成 + `scripts/stitch_grid.py` 拼合，发送到飞书等待确认。
+
+**Phase 4 Prompt输出**：基于确认后的宫格图，输出 Seedance 2.0 视频Prompt + 音效Prompt + 台词Prompt。
 
 **脚本调用**：
 ```bash

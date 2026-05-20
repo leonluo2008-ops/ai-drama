@@ -1,0 +1,24 @@
+{
+  "characters": {
+    "顾砚": {
+      "face": "/home/luo/.openclaw/workspace/skills/ai-drama/projects/guyan-mother-appeared/02-characters/顾砚/顾砚_面部.png",
+      "outfit": "/home/luo/.openclaw/workspace/skills/ai-drama/projects/guyan-mother-appeared/02-characters/顾砚/顾砚_服装.png"
+    },
+    "林浅浅": {
+      "face": "/home/luo/.openclaw/workspace/skills/ai-drama/projects/guyan-mother-appeared/02-characters/林浅浅/林浅浅_面部.png",
+      "outfit": "/home/luo/.openclaw/workspace/skills/ai-drama/projects/guyan-mother-appeared/02-characters/林浅浅/林浅浅_服装.png"
+    },
+    "沈晚宁": {
+      "face": "/home/luo/.openclaw/workspace/skills/ai-drama/projects/guyan-mother-appeared/02-characters/沈晚宁/沈晚宁_面部.png",
+      "outfit": "/home/luo/.openclaw/workspace/skills/ai-drama/projects/guyan-mother-appeared/02-characters/沈晚宁/沈晚宁_服装.png"
+    },
+    "我妈": {
+      "face": "/home/luo/.openclaw/workspace/skills/ai-drama/projects/guyan-mother-appeared/02-characters/我妈/我妈_面部.png",
+      "outfit": "/home/luo/.openclaw/workspace/skills/ai-drama/projects/guyan-mother-appeared/02-characters/我妈/我妈_服装.png"
+    }
+  },
+  "scenes": {
+    "scene": "/home/luo/.openclaw/workspace/skills/ai-drama/projects/guyan-mother-appeared/03-scenes/寿宴大厅_大图.png",
+    "multi": "/home/luo/.openclaw/workspace/skills/ai-drama/projects/guyan-mother-appeared/03-scenes/寿宴大厅_多角度.png"
+  }
+}

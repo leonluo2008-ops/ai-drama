@@ -8,47 +8,61 @@ import shutil
 import subprocess
 import sys
 import time
+import re
 from pathlib import Path
 
 PROJECT = "guyan-mother-appeared"
 PROJECT_DIR = Path(__file__).resolve().parent.parent / "projects" / PROJECT
 CHAR_DIR = PROJECT_DIR / "02-characters"
 SCENE_DIR = PROJECT_DIR / "03-scenes"
-TMP_DIR = Path("/tmp")
 SCRIPT_DIR = Path(__file__).resolve().parent
+STYLE_FILE = SCRIPT_DIR.parent / "references" / "style.md"
+
+def load_style_tags():
+    """从 references/style.md 动态加载风格标签"""
+    if not STYLE_FILE.exists():
+        return ""
+    content = STYLE_FILE.read_text(encoding="utf-8")
+    # 提取 art_direction 行
+    m = re.search(r'art_direction:\s*(.+)', content)
+    if m:
+        return m.group(1).strip()
+    return ""
+
+STYLE_TAGS = load_style_tags()
+print(f"[风格] 已加载: {STYLE_TAGS}", flush=True)
 
 CHARACTERS = [
     {
         "name": "顾砚",
-        "face_prompt": "一位年轻英俊的亚洲男性，黑色短发精致偏分，身着深色高定西装，暗纹领带，冷峻表情，Pixel Art style, cyberpunk aesthetic, pixelated portrait, clean solid color background, high detail, 2k",
-        "outfit_prompt": "黑色高定西装套装，白色衬衫，暗纹领带，黑色西裤，袖扣，纯白色背景俯视平铺，所有物品完整展示不裁切，Pixel Art style, cyberpunk flat lay aesthetic, pixelated fabric texture, high detail, 2k",
+        "face_prompt": f"一位年轻英俊的亚洲男性，黑色短发精致偏分，身着深色高定西装，暗纹领带，冷峻表情，{STYLE_TAGS}",
+        "outfit_prompt": f"黑色高定西装套装，白色衬衫，暗纹领带，黑色西裤，袖扣，纯白色背景俯视平铺，所有物品完整展示不裁切，{STYLE_TAGS}",
         "six_view_prompt": "参考图生图：请严格根据图片1中的角色，生成一张人物的六视图角色定妆照；不要出现文字，要求纯白色背景，有人物面部正面特写、人物面部45度侧面特写、人物面部背面特写、人物正面全身照、人物45度侧面全身照以及人物背面全身照。该人物穿着图片2中的服饰。注意：只输出成一张图片。",
     },
     {
         "name": "林浅浅",
-        "face_prompt": "一位年轻漂亮的亚洲女性，栗色长卷发精致盘发造型，香槟色亮面礼服裙收腰设计，银色细高跟，精致耳坠，表情傲慢轻蔑，Pixel Art style, cyberpunk aesthetic, pixelated portrait, clean solid color background, high detail, 2k",
-        "outfit_prompt": "香槟色亮面礼服裙，收腰设计，裙摆及膝，银色细高跟，精致耳坠，细项链，纯白色背景俯视平铺，所有物品完整展示不裁切，Pixel Art style, cyberpunk flat lay aesthetic, pixelated fabric texture, high detail, 2k",
+        "face_prompt": f"一位年轻漂亮的亚洲女性，栗色长卷发精致盘发造型，香槟色亮面礼服裙收腰设计，银色细高跟，精致耳坠，表情傲慢轻蔑，{STYLE_TAGS}",
+        "outfit_prompt": f"香槟色亮面礼服裙，收腰设计，裙摆及膝，银色细高跟，精致耳坠，细项链，纯白色背景俯视平铺，所有物品完整展示不裁切，{STYLE_TAGS}",
         "six_view_prompt": "参考图生图：请严格根据图片1中的角色，生成一张人物的六视图角色定妆照；不要出现文字，要求纯白色背景，有人物面部正面特写、人物面部45度侧面特写、人物面部背面特写、人物正面全身照、人物45度侧面全身照以及人物背面全身照。该人物穿着图片2中的服饰。注意：只输出成一张图片。",
     },
     {
         "name": "沈晚宁",
-        "face_prompt": "一位亚洲年轻女性，黑色长发自然垂落，米白色简约衬衫，深灰色直筒裙，黑色粗跟单鞋，表情被动尴尬，Pixel Art style, cyberpunk aesthetic, pixelated portrait, clean solid color background, high detail, 2k",
-        "outfit_prompt": "米白色简约衬衫，款式保守，深灰色直筒裙长度及膝，黑色粗跟单鞋，无明显配饰，纯白色背景俯视平铺，所有物品完整展示不裁切，Pixel Art style, cyberpunk flat lay aesthetic, pixelated fabric texture, high detail, 2k",
+        "face_prompt": f"一位亚洲年轻女性，黑色长发自然垂落，米白色简约衬衫，深灰色直筒裙，黑色粗跟单鞋，表情被动尴尬，{STYLE_TAGS}",
+        "outfit_prompt": f"米白色简约衬衫，款式保守，深灰色直筒裙长度及膝，黑色粗跟单鞋，无明显配饰，纯白色背景俯视平铺，所有物品完整展示不裁切，{STYLE_TAGS}",
         "six_view_prompt": "参考图生图：请严格根据图片1中的角色，生成一张人物的六视图角色定妆照；不要出现文字，要求纯白色背景，有人物面部正面特写、人物面部45度侧面特写、人物面部背面特写、人物正面全身照、人物45度侧面全身照以及人物背面全身照。该人物穿着图片2中的服饰。注意：只输出成一张图片。",
     },
     {
         "name": "我妈",
-        "face_prompt": "一位亚洲年长女性，花白短发微乱无造型感，洗到发白的藏青色旧棉褂手工布盘扣，褪色深灰色粗布裤子，黑色老式布鞋磨损严重，表情善良无措，Pixel Art style, cyberpunk aesthetic, pixelated portrait, clean solid color background, high detail, 2k",
-        "outfit_prompt": "洗到发白的藏青色旧棉褂，手工布盘扣，褪色深灰色粗布裤子，黑色老式布鞋磨损严重，旧布袋，纯白色背景俯视平铺，所有物品完整展示不裁切，Pixel Art style, cyberpunk flat lay aesthetic, pixelated fabric texture, high detail, 2k",
+        "face_prompt": f"一位亚洲年长女性，花白短发微乱无造型感，洗到发白的藏青色旧棉褂手工布盘扣，褪色深灰色粗布裤子，黑色老式布鞋磨损严重，表情善良无措，{STYLE_TAGS}",
+        "outfit_prompt": f"洗到发白的藏青色旧棉褂，手工布盘扣，褪色深灰色粗布裤子，黑色老式布鞋磨损严重，旧布袋，纯白色背景俯视平铺，所有物品完整展示不裁切，{STYLE_TAGS}",
         "six_view_prompt": "参考图生图：请严格根据图片1中的角色，生成一张人物的六视图角色定妆照；不要出现文字，要求纯白色背景，有人物面部正面特写、人物面部45度侧面特写、人物面部背面特写、人物正面全身照、人物45度侧面全身照以及人物背面全身照。该人物穿着图片2中的服饰。注意：只输出成一张图片。",
     },
 ]
 
 SCENE_PROMPT = (
-    "豪华宴会厅，金色水晶吊灯垂悬中央，长条白色桌布宴会桌，精致银器餐具排列整齐，"
-    "落地窗外暮色将至，红色帷幕装饰墙面，大理石地面反射暖光，空气中弥漫着花香，"
-    "Pixel Art style, cyberpunk city night, 俯视广角构图, high-saturation neon colors, "
-    "blocky pixel brushstrokes, NO HUMANS NO CHARACTERS, no people, empty scene, high detail, 2k"
+    f"豪华宴会厅，金色水晶吊灯垂悬中央，长条白色桌布宴会桌，精致银器餐具排列整齐，"
+    f"落地窗外暮色将至，红色帷幕装饰墙面，大理石地面反射暖光，空气中弥漫着花香，"
+    f"{STYLE_TAGS}, NO HUMANS NO CHARACTERS, no people, empty scene"
 )
 
 SIX_VIEW_MULTI_PROMPT = (
@@ -70,15 +84,17 @@ def run_cmd(cmd, timeout=300):
 def submit_and_wait(prompt, images=None, ratio="1:1", model="5.0"):
     """提交dreamina任务并轮询等待结果"""
     if images:
-        cmd = ["dreamina", "image2image", "--images"] + images + [
-            "--prompt", prompt, "--ratio", ratio,
-            "--resolution_type", "2k", "--model_version", model, "--poll", "0"
+        # 必须用 --images=path 格式，等号不能空格
+        img_args = []
+        for img in images:
+            img_args += ["--images=" + img]
+        cmd = ["dreamina", "image2image"] + img_args + [
+            "--prompt=" + prompt, "--ratio=" + ratio,
+            "--resolution_type=2k", "--model_version=" + model, "--poll=0"
         ]
     else:
-        cmd = ["dreamina", "text2image", "--prompt", prompt, "--ratio", ratio,
-               "--resolution_type", "2k", "--model_version", model, "--poll", "0"
-        ]
-
+        cmd = ["dreamina", "text2image", "--prompt=" + prompt, "--ratio=" + ratio,
+               "--resolution_type=2k", "--model_version=" + model, "--poll=0"]
     r = run_cmd(cmd)
     if r.returncode != 0:
         return {"status": "failed", "error": r.stderr}
@@ -165,16 +181,24 @@ def main():
                 print(f"  服装图完成: {dst}", flush=True)
 
         # Step 3: 六视图
+        print(f"  [{name}] Step3/3 六视图检查: face={'face' in results} outfit={'outfit' in results}", flush=True)
         if results.get("face") and results.get("outfit"):
             print(f"  [{name}] Step3/3 生成六视图...", flush=True)
             r = submit_and_wait(char["six_view_prompt"], images=[results["face"], results["outfit"]], ratio="1:1")
             if r["status"] == "success":
                 imgs = download_result(r["submit_id"], char_dir)
+                print(f"  [{name}] 六视图下载结果: {imgs}", flush=True)
                 if imgs:
                     dst = char_dir / f"{name}_六视图.png"
                     copy_to_dest(imgs[0], dst)
                     results["six_view"] = str(dst)
                     print(f"  六视图完成: {dst}", flush=True)
+        else:
+            face_path = results.get("face", "")
+            outfit_path = results.get("outfit", "")
+            face_ok = Path(face_path).exists() if face_path else False
+            outfit_ok = Path(outfit_path).exists() if outfit_path else False
+            print(f"  [{name}] 六视图跳过: face_exists={face_ok} outfit_exists={outfit_ok}", flush=True)
 
         all_results[name] = results
         print(f"  [{name}] 完成: {list(results.keys())}", flush=True)

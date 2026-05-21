@@ -143,17 +143,23 @@ AI负责：信息完整呈现 + 方案建议 + 执行
 "minion style male character, yellow skin, orange hair, green eyes, silver goggles, blue overalls, white t-shirt, pure white background"
 ```
 
-**注**：卡通风格角色（如小黄人）不需要 `Asian Chinese` 前缀；写实人像风格角色才需要。
+**注**：卡通风格角色（如小黄人）不需要 `Asian Chinese` 前缀；写实人像风格角色才需要。详见 `references/character-style-guide.md`。
 
-### 种族/风格铁律 ⚠️ 必须遵守
-**所有角色 prompt 必须以 `Asian Chinese` 开头**，不能用模糊写法。模型默认会混入欧美人种，必须强制锁定。
+### 种族锁定规则 ⚠️ 先确认，再执行
+
+**禁止擅自决定。** 角色是否需要 `Asian Chinese` 前缀，由项目风格和创作者决定。流程：
+
+1. **先询问创作者**：这个项目是什么风格？（写实人像 / 卡通动漫 / 混合）
+2. **再按规则执行**：参考 `references/character-style-guide.md` 的分类表
+3. **如果不确定**：直接问创作者「这个角色需要加 Asian Chinese 吗」，不要猜
 
 ```python
-# ❌ 错误：模型可能出欧美人
-face_prompt = "young handsome man, black short hair..."
-
-# ✅ 正确：强制亚洲中国人
+# 创作者确认项目为「写实人像」风格后
 face_prompt = "Asian Chinese male, Asian Chinese face, young handsome man..."
+
+# 创作者确认项目为「卡通动漫」风格后（或有 minion style 等明确风格词）
+face_prompt = "minion style male character, yellow skin, blue overalls..."
+#                                    ↑ 不加 Asian Chinese
 ```
 
 **style.md 必须与项目实际风格一致**。如果 style.md 设成一种风格但项目要另一种，会造成风格错乱。切换风格后必须验证脚本实际调用了 style.md 的内容。
@@ -293,7 +299,7 @@ python scripts/dreamina_generate.py \
   --type character \
   --project "{项目名}" \
   --character "{角色名}" \
-  --face_prompt "{Asian Chinese female, long straight black hair...}" \
+  --face_prompt "{根据项目风格决定是否加Asian Chinese前缀}" \
   --outfit_prompt "{描述角色服装的英文文本}" \
   --ratio 1:1
 ```

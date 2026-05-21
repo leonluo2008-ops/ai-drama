@@ -27,7 +27,7 @@ composition: {构图偏好}
 texture: {质感关键词}
 ```
 
-**铁律：所有角色 prompt 必须以 Asian Chinese 开头，强调亚洲中国人种。**
+**种族锁定规则**：由项目剧本和角色风格决定，详见 `references/character-style-guide.md`。不要擅自决定——先向创作者确认项目风格，再按规则执行。
 
 ---
 

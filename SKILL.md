@@ -122,6 +122,26 @@ AI负责：信息完整呈现 + 方案建议 + 执行
 ### 即梦 5.0 prompt 雷区
 - **禁止用 portrait photo/portrait**（model 5.0 会出插画/卡通风，不是写实人像）
 - **服装图**：需要纯白背景、俯视角度（flat lay）、所有物品完整可见，避免 fashion photography 风格
+- **prompt 精简原则**：文生图 prompt 过长会导致 generation failed。保留核心特征描述（主体+颜色+关键配饰），删除修饰性形容词
+
+### 文生图 prompt 复杂度陷阱 ⚠️
+即梦文生图对 prompt 长度敏感，过长的 prompt 会导致 generation failed。
+
+**失败征兆**：`gen_status: fail, fail_reason: "generation failed: final generation failed"`
+
+**经验规则**：
+- 主体描述 + 颜色/材质 + 关键特征 ≤ 3-4 个短句
+- 删除形容词词组（"friendly", "confident", "detailed" 等）
+- 只保留：主体词 + 颜色 + 关键元素
+
+**正确示例**：
+```
+# ❌ 失败：过多修饰词
+"minion style male character, yellow skin, orange short spiky hair, green eyes, silver goggles on head, blue denim overalls, white t-shirt, big friendly smile, confident expression, pure white background"
+
+# ✅ 成功：精简核心
+"minion style male character, yellow skin, orange hair, green eyes, silver goggles, blue overalls, white t-shirt, pure white background"
+```
 
 ### 种族/风格铁律 ⚠️ 必须遵守
 **所有角色 prompt 必须以 `Asian Chinese` 开头**，不能用模糊写法。模型默认会混入欧美人种，必须强制锁定。
@@ -149,6 +169,23 @@ face_prompt = "Asian Chinese male, Asian Chinese face, young handsome man..."
 | 无参考图，已生成面部+服装 | 用双图六视图，传生成的2张图 |
 
 **服装参考图必须是纯服装平铺图**（flat lay），不是包含角色的全身照。如果用户提供的是角色全身照作为参考，应该走单图六视图流程。
+
+### ⚠️ 禁止用同一参考图生成多个不同角色
+
+**常见错误**：以为AI会自动对同一参考图做"差异化处理"，生成不同角色。
+
+**事实**：同一参考图生成多个角色，结果是相同或高度相似的。AI图生图是"复刻"，不是"创作"。
+
+**正确做法**：
+- 每个角色各提供一张独立参考图
+- 或为每个角色设计独立的文生图 prompt（不同的发型/颜色/体型描述）
+- 参考图只解决"这个角色长什么样"，不解决"我有两个不同角色"
+
+**合法场景：服装风格模板复用**
+同一参考图可以作为多个角色的服装风格模板（因为同一世界观下服装统一），但面部特征必须各自独立：
+- ✅ 同参考图 + 各角色独立 face_prompt → 可行
+- ✅ 同参考图 + 各角色独立文生图 face → 可行
+- ❌ 同参考图 + 同 face_prompt → 生成相同角色
 
 ### 参考图必须真正使用 ⚠️ 关键
 收到用户参考图后，必须：

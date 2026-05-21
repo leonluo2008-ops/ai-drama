@@ -28,6 +28,26 @@ description: AI短剧视频生成Pipeline — 从剧本到角色图→场景图�
 - 脚本里有硬编码的角色名、项目名、具体prompt内容
 - SKILL.md 引用了特定实测案例的细节
 - 新用户/新项目无法直接使用，需要大面积替换内容才能跑
+- **references/ 目录下任何文件含具体项目名/角色名/剧本内容**（框架文件只能包含模板变量和通用方法论，项目内容必须存在 projects/{项目名}/ 下）
+
+### ⚠️ 框架文件写入红线 ⚠️
+
+`references/` 是**框架级文档**，禁止写入任何项目特定内容：
+
+| 文件 | 允许内容 | 禁止内容 |
+|------|---------|---------|
+| `references/style.md` | 模板字段说明（art_direction/color_palette等占位符） | 具体风格值、项目名、角色名 |
+| `references/dreamina-pipeline.md` | 工具调用规范、参数格式说明 | 具体角色名、具体prompt内容 |
+| `references/sixview-template.md` | prompt 模板结构说明 | 任何实测案例 |
+| `references/character-style-guide.md` | 规则分类表 | 任何具体角色描述 |
+| `references/character-differentiation-method.md` | 方法论框架 | 任何实测案例（托比/莱恩等） |
+
+**判断标准**：把文件发给新用户，他能否直接用于自己的项目而无需删除任何内容？凡是需要删除才能用的，就是违反了这个原则。
+
+**正确做法**：
+- ✅ 框架文件写 `{角色名}`、`{项目名}`、`{art_direction}` 等占位符
+- ❌ 框架文件写「眼睛工厂」「托比」「小黄人」等具体内容
+- ❌ AI 在对话中把项目内容填入框架文件（如本次对话中 style.md 被写入具体风格值）
 
 ## Pipeline Stage 顺序
 
@@ -124,24 +144,35 @@ AI负责：信息完整呈现 + 方案建议 + 执行
 - **服装图**：需要纯白背景、俯视角度（flat lay）、所有物品完整可见，避免 fashion photography 风格
 - **prompt 精简原则**：文生图 prompt 过长会导致 generation failed。保留核心特征描述（主体+颜色+关键配饰），删除修饰性形容词
 
-### 文生图 prompt 复杂度陷阱 ⚠️
-即梦文生图对 prompt 长度敏感，过长的 prompt 会导致 generation failed。
+### 文生图 prompt 过滤风险 ⚠️
 
 **失败征兆**：`gen_status: fail, fail_reason: "generation failed: final generation failed"`
+
+**已知过滤触发词**：
+- `"minion"` / `"minion style"` → 触发过滤
+- 中文词混合（如"瞳孔入口""角膜穹顶"）→ 触发过滤
+- 过多修饰词组合 → 触发过滤
 
 **经验规则**：
 - 主体描述 + 颜色/材质 + 关键特征 ≤ 3-4 个短句
 - 删除形容词词组（"friendly", "confident", "detailed" 等）
 - 只保留：主体词 + 颜色 + 关键元素
+- **禁止混中文**，全部使用英文描述
+- **禁止 "minion"**，用色调（warm yellow tones）代替风格词
 
 **正确示例**：
 ```
-# ❌ 失败：过多修饰词
+# ❌ 失败：含 minion + 过多修饰词
 "minion style male character, yellow skin, orange short spiky hair, green eyes, silver goggles on head, blue denim overalls, teal accents, white t-shirt, big friendly smile, confident expression, pure white background"
 
-# ✅ 成功：精简核心（删除形容词词组，保留主体+颜色+关键元素）
-"minion style male character, yellow skin, orange hair, green eyes, silver goggles, blue overalls, white t-shirt, pure white background"
+# ❌ 失败：含中文
+"瞳孔入口虹膜机械结构，蓝色调"
+
+# ✅ 成功：精简英文（删除 minion，保留色调引导）
+"cartoon interior, flat 2D cartoon style, transparent glass dome ceiling of factory, warm yellow tones, soft blue light, volumetric rays, smooth surfaces, bright atmosphere, NO HUMANS NO CHARACTERS"
 ```
+
+**卡通风格不等于"cartoon"**：即梦的 "cartoon, Pixar style" 实际可能输出**写实数字艺术风**，不是角色那种 minion cartoon。场景图风格需与创作者确认。
 
 **注**：卡通风格角色（如小黄人）不需要 `Asian Chinese` 前缀；写实人像风格角色才需要。详见 `references/character-style-guide.md`。
 
@@ -176,9 +207,51 @@ face_prompt = "minion style male character, yellow skin, blue overalls..."
 | 用户提供2张参考图（面部+服装分开的平铺图） | 用双图六视图，prompt 区分"图片1是角色"和"图片2是服装" |
 | 无参考图，已生成面部+服装 | 用双图六视图，传生成的2张图 |
 
-**服装参考图必须是纯服装平铺图**（flat lay），不是包含角色的全身照。如果用户提供的是角色全身照作为参考，应该走单图六视图流程。
+## Stage-3 场景图生成
 
-### ⚠️ 禁止用同一参考图生成多个不同角色
+### 场景图 = 纯环境图，禁止出现角色 ⚠️
+Stage-3 生成的场景图是**环境氛围图**，不能包含角色。角色会在分镜阶段合成进场景。
+
+**常见错误**：prompt 含 "with workers" / "with characters" 等词，导致人物出现在环境图中。场景图 prompt 必须**禁止任何人物相关词汇**。
+
+### 场景图 prompt 构造原则
+1. 明确风格关键词（如 flat 2D cartoon style）
+2. 明确色调（warm yellow tones / teal blue / etc）
+3. **禁止**：人物/角色/workers/characters 相关词汇
+4. 纯英文，中文词会触发过滤导致 generation failed
+5. 结尾加 "NO HUMANS NO CHARACTERS" 强化约束
+
+### ⚠️ 场景图风格一致性：当前技术限制
+即梦（Dreamina）没有独立的「风格迁移」功能。`image2image` 会同时迁移参考图的**内容+风格**，无法做到「只迁移风格、不迁移角色」。
+
+**实测结论**：
+- 纯文生图（prompt写风格词）→ 风格可能漂移
+- 用角色参考图做 image2img → 风格一致了，但角色也被迁移进去了 ❌
+
+**正确工作流**：场景图用纯文生图（`text2image`，不加 `--images`），prompt 写清楚风格词 + "NO HUMANS NO CHARACTERS"，接受风格可能存在一定漂移。**禁止**用角色参考图做 scene img2img。
+
+### 其他 type 命令
+
+```bash
+# 场景大图（纯文生图，不加参考图 ⚠️）
+python scripts/dreamina_generate.py \
+  --type scene --project "{项目}" --scene "{场景名}" \
+  --prompt "{场景描述}，NO HUMANS NO CHARACTERS" --ratio 1:1
+# ⚠️ 注意：场景图只用 text2image，不传 --images 参考图（会带入角色）
+# 提交后必须轮询查状态，--poll=0 不保证任务成功
+# 查询：dreamina query_result --submit_id=<id>
+# 下载：dreamina query_result --submit_id=<id> --download_dir=<path>
+
+# 场景多角度图（图生图，以场景大图为源）
+python scripts/dreamina_generate.py \
+  --type scene_multi --project "{项目}" --scene "{场景名}" \
+  --source "/path/to/场景大图.png" --ratio 1:1
+
+# 分镜格图
+python scripts/dreamina_generate.py \
+  --type storyboard_panel --project "{项目}" \
+  --panel "1" --prompt "{分镜描述}" --ratio 16:9
+```
 
 **常见错误**：以为AI会自动对同一参考图做"差异化处理"，生成不同角色。
 
@@ -195,8 +268,6 @@ face_prompt = "minion style male character, yellow skin, blue overalls..."
 - ✅ 同参考图 + 各角色独立 face_prompt → 可行（分支3，脚本已支持）
 - ✅ 各角色独立参考图（推荐）
 - ❌ 同参考图 + 同 face_prompt → 生成相同角色
-
-**脚本能力**：当前 `dreamina_generate.py` **已支持** `--face_image` + `--face_prompt` 组合。详见上方「分支3」命令示例。
 
 ### 参考图必须真正使用 ⚠️ 关键
 收到用户参考图后，必须：
@@ -317,10 +388,13 @@ python scripts/dreamina_generate.py \
 ### 其他 type 命令
 
 ```bash
-# 场景大图
+# 场景大图（必须先确认 prompt 无过滤风险，见上方「文生图 prompt 过滤风险」）
 python scripts/dreamina_generate.py \
   --type scene --project "{项目}" --scene "{场景名}" \
   --prompt "{场景描述}" --ratio 1:1
+# ⚠️ 注意：提交后必须轮询查状态，--poll=0 不保证任务成功
+# 查询：dreamina query_result --submit_id=<id>
+# 下载：dreamina query_result --submit_id=<id> --download_dir=<path>
 
 # 场景多角度图（图生图，以场景大图为源）
 python scripts/dreamina_generate.py \

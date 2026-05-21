@@ -52,3 +52,30 @@
 1. **卡通角色**：prompt 已有 "minion style"、"cartoon character"、"animation style" → 不加 Asian Chinese
 2. **写实人像**：prompt 有 "portrait"、"photo realistic" → 必须加 Asian Chinese
 3. **混合风险**：3D渲染但面孔写实 → 加 Asian Chinese
+
+## 卡通动物角色设计模式（实测验证）
+
+当项目是**卡通动物角色**时，种族锁定规则仍然适用，但角色区分主要靠：
+
+### 安全帽颜色区分不同角色
+
+| 角色 | 物种 | 安全帽颜色 | 差异化特征 |
+|------|------|-----------|-----------|
+| 托比 | 白色卡通鸭子 | 黄色 | 老实稳重 |
+| 莱恩 | 白色卡通鸭子 | 蓝色 | 活泼好奇 |
+
+**prompt 模板**（不加 Asian Chinese）：
+
+```python
+# 托比：黄色安全帽
+face_prompt = "white cartoon duck character, yellow safety helmet, orange beak and feet, pink blush cheeks, cute expression, cartoon style, white background"
+
+# 莱恩：蓝色安全帽（其他特征相同，仅安全帽颜色不同）
+face_prompt = "white cartoon duck character, blue safety helmet, orange beak and feet, pink blush cheeks, cute expression, cartoon style, white background"
+```
+
+**关键点**：
+- 物种相同（都是白色卡通鸭子）→ 通过安全帽颜色区分角色
+- 不加 Asian Chinese（卡通风格本身无种族歧义）
+- 安全帽是工程/劳动主题角色的核心配件，也是最自然的差异化元素
+- 同物种多角色设计：用颜色区分，安全帽上的文字也可辅助区分（J.FARM / A4 / SOMN）

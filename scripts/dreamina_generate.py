@@ -237,10 +237,31 @@ def run_character(project: str, character: str, face_prompt: str, outfit_prompt:
     style = _load_style()
     art_direction = style.get("art_direction", "")
 
-    # Step 1: 面部图（有无参考图分支）
+    # Step 1: 面部图（三种分支）
     face_path = None
-    if face_image:
-        # 有参考图：用参考图做面部图生图
+    if face_image and face_prompt:
+        # 分支3：参考图 + 差异化 prompt → 图生图，prompt 叠加差异化
+        # 参考图驱动风格一致性，face_prompt 驱动差异化
+        print(f"\n[角色:{character}] Step 1/3 使用参考图+差异化prompt生成面部图...", file=sys.stderr)
+        face_prompt_for_img2img = (
+            f"{face_prompt}。"
+            f"保持参考图中的角色风格、物种、体态、表情特征完全一致。"
+            f"纯白色背景，人物居中。"
+        )
+        r = submit_and_wait(face_prompt_for_img2img, images=[face_image], ratio=ratio)
+        if r["status"] != "success":
+            print(f"面部图生成失败: {r.get('error')}", file=sys.stderr)
+            return None
+        face_path = str(proj_dir / f"{character}_面部.png")
+        downloaded = download_result(r["submit_id"], str(proj_dir))
+        if downloaded:
+            latest = max(downloaded, key=lambda f: Path(f).stat().st_mtime)
+            shutil.copy2(latest, face_path)
+            Path(latest).unlink()
+            results["face"] = face_path
+            print(f"面部图已保存: {face_path}", file=sys.stderr)
+    elif face_image:
+        # 分支1：只有参考图 → 图生图，强调保持所有特征
         print(f"\n[角色:{character}] Step 1/3 使用参考图生成面部图...", file=sys.stderr)
         face_prompt_for_img2img = (
             f"请严格根据参考图，生成一张人物的面部特写图。"
@@ -260,7 +281,7 @@ def run_character(project: str, character: str, face_prompt: str, outfit_prompt:
             results["face"] = face_path
             print(f"面部图已保存: {face_path}", file=sys.stderr)
     else:
-        # 无参考图：纯文字生成
+        # 分支2：只有 prompt → 文生图
         print(f"\n[角色:{character}] Step 1/3 生成面部图...", file=sys.stderr)
         r = submit_and_wait(face_prompt, images=[], ratio=ratio)
         if r["status"] != "success":

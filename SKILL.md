@@ -190,15 +190,13 @@ face_prompt = "minion style male character, yellow skin, blue overalls..."
 - 参考图只解决"这个角色长什么样"，不解决"我有两个不同角色"
 
 **合法场景：服装风格模板复用**。详细方法论见 `references/character-differentiation-method.md`。
+
 同一参考图可以作为多个角色的服装风格模板（因为同一世界观下服装统一），但面部特征必须各自独立：
-- ✅ 同参考图 + 各角色独立 face_prompt → 可行（脚本暂不支持，见下方说明）
+- ✅ 同参考图 + 各角色独立 face_prompt → 可行（分支3，脚本已支持）
 - ✅ 各角色独立参考图（推荐）
 - ❌ 同参考图 + 同 face_prompt → 生成相同角色
 
-**脚本能力边界**：当前 `dreamina_generate.py` 的 `--face_image` 和 `--face_prompt` 互斥，不能同时传递。因此「同参考图 + 独立 face_prompt」在脚本层面暂不可行。如需角色差异化，请选择：
-1. 每个角色提供独立的参考图（推荐）
-2. 或完全使用文生图（各角色独立 prompt）
-3. 或手动编辑参考图（如 PS 改色）后作为第二个角色的参考图
+**脚本能力**：当前 `dreamina_generate.py` **已支持** `--face_image` + `--face_prompt` 组合。详见上方「分支3」命令示例。
 
 ### 参考图必须真正使用 ⚠️ 关键
 收到用户参考图后，必须：
@@ -304,7 +302,8 @@ python scripts/dreamina_generate.py \
   --ratio 1:1
 
 # 分支3：参考图 + 差异化prompt → 图生图（风格一致+面部差异化）
-# 场景：同一参考图生成多个角色（如莱恩用托比的参考图，但安全帽颜色不同）
+# 场景：同一参考图生成多个角色（如{角色B}用{角色A}的参考图，但配件颜色不同）
+# 边界注意：当 face_image 存在时，outfit_prompt 被忽略；服装参考图必须通过 outfit_image 传入
 python scripts/dreamina_generate.py \
   --type character \
   --project "{项目名}" \

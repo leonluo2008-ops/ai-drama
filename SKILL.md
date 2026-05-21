@@ -157,7 +157,7 @@ face_prompt = "Asian Chinese male, Asian Chinese face, young handsome man..."
 3. 面部图优先用参考图做图生图（`use_ref=True`）
 4. 六视图 prompt 里也要写明参考图的特征（发型/配饰）
 
-**本次教训**：收到参考图后如果outfit_prompt写的是与参考图无关的内容，会导致服装完全不对。outfit_prompt 必须严格按参考图描述。
+**原则**：outfit_prompt 必须严格按参考图描述，不能脑补。如果描述内容与参考图不符，会导致服装完全不对。
 
 ### 发图前必须验证 ⚠️
 发图给用户前，先 `mcp_zai_analyze_image` 本地文件，确认：
@@ -169,8 +169,8 @@ face_prompt = "Asian Chinese male, Asian Chinese face, young handsome man..."
 ### 六视图参考图必须覆盖六个视角
 详见 `references/sixview-template.md`
 
-## ⚠️ 关键教训：Stage-4 缺少「镜头规划表」步骤
-详见 `references/shot-planning-lesson.md`
+## ⚠️ 关键检查点：Stage-4 需要「镜头规划表」步骤
+详见 `references/shot-planning-method.md`
 
 **核心问题**：场次表只解决"切成几块"，没解决"每块用什么镜头"。  
 **待确认**：镜头规划表粒度（每镜头一行 vs 每场3-5个关键镜）、表达形式（纯文字 vs 图示）。
@@ -198,7 +198,7 @@ AI输出分镜脚本
 ```
 
 **⚠️ 绝对禁止**：
-- 用户发送场次表 → AI未读剧本就输出场次分析（这次犯的错误）
+- 用户发送场次表 → AI未读剧本就输出场次分析
 - 跳过「读取剧本」步骤直接处理表格数据
 - 以"SSeedance只能生成X秒"为由建议合并/拆分场次
 - 把「编剧给的场次时长」当成最终场次（那是叙事参考，AI需要重新按公式计算）
@@ -280,9 +280,11 @@ python scripts/dreamina_generate.py \
 
 ### 即梦 query_result 下载逻辑 ⚠️ 关键 bug
 
-- **根因**：`download_result` 下载到共享 `/tmp`，4 个角色并发轮跑时互相覆盖文件
-- **现象**：dreamina后台看是对的，但本地文件是错的（其他任务出的图）
-- **修复方案**：每个角色/场景用**各自独立的目录**做下载目标目录
+**有两层风险，必须同时修复**：
+
+**第一层：共享目录冲突**
+- **根因**：多个角色/场景并发时，共用 `/tmp` 会互相覆盖文件
+- **修复**：每个角色/场景用**各自独立的目录**做下载目标
   ```python
   # ❌ 错误：共用 /tmp，4个角色会互相踩
   imgs = download_result(r["submit_id"], TMP_DIR)
@@ -290,12 +292,23 @@ python scripts/dreamina_generate.py \
   # ✅ 正确：每个角色用自己的目录
   imgs = download_result(r["submit_id"], char_dir)
   ```
-- **额外保险**：`download_result` 内部按修改时间取最新文件：
+
+**第二层：glob 重新扫描目录 bug ⚠️ 严重**
+- **根因**：`download_result()` 返回文件列表后，caller 不用这个列表，反而 `glob("*.png")` 重新扫描目标目录。目录里可能有旧残留文件（更早生成的、同名的、更大的），`glob` 取到的是旧文件而非新下载的文件。
+- **现象**：dreamina 后台看是对的（任务ID对应正确图片），但 `glob` 取到的是旧残留文件，导致后续所有图片都错
+- **原则**：即梦后台截图正确 ≠ 本地文件正确，必须本地验证
+- **修复**：caller 必须**直接使用 `download_result` 返回的文件列表**，不要重新扫描目录：
   ```python
-  latest = max(imgs, key=lambda f: Path(f).stat().st_mtime)
-  return [latest]
+  # ❌ 错误：download_result 返回后 caller 又 glob，踩到旧残留
+  downloaded = download_result(r["submit_id"], char_dir)
+  latest = max(Path(char_dir).glob("*.png"), key=lambda f: f.stat().st_mtime)  # 错！
+
+  # ✅ 正确：直接用 download_result 返回的列表
+  downloaded = download_result(r["submit_id"], char_dir)
+  latest = max(downloaded, key=lambda f: Path(f).stat().st_mtime)
   ```
-- **发图前必须验证**：先 `mcp_zai_analyze_image` 本地文件，确认内容正确再发用户
+
+**验证原则**：发图前必须 `mcp_zai_analyze_image` 本地文件确认内容正确，不能只看 dreamina 后台截图。
 
 ### 跨设备文件操作
 - **不要用 `Path.rename()`**：会报 `Invalid cross-device link`

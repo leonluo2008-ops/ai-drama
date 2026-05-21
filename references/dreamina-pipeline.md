@@ -47,7 +47,7 @@ six_view_prompt = "Asian Chinese female character, six-view character sheet..."
 
 ## 风格一致性检查 ⚠️
 
-**教训**：`style.md` 必须与项目实际风格一致，脚本调用时也要正确叠加风格标签。
+**原则**：`style.md` 必须与项目实际风格一致，脚本调用时也要正确叠加风格标签。
 
 **检查清单**（每次跑角色生成前）：
 1. `references/style.md` 的 `art_direction` 是否与项目需求一致？
@@ -81,29 +81,37 @@ cmd = ["dreamina", "image2image",
        "--resolution_type=2k", "--model_version=5.0", "--poll=0"]
 ```
 
-## 文件冲突陷阱
+## glob 重新扫描目录 bug ⚠️ 严重
 
-### 问题现象
-dreamina 后台生成的图片是正确的，但发到飞书给用户看到的图不对（是另一张任务的图）。
+**问题现象**：dreamina 后台生成的图片是正确的，但 caller 取到的本地文件是旧的（另一张任务的图）。
 
-### 根因
-`download_result()` 下载到共享目录 `/tmp`，多角色并发轮跑时：
-1. 任务A提交，下载到 `/tmp/bg_4x3.jpg`
-2. 任务B提交，下载到 `/tmp/bg_4x3.jpg`（覆盖）
-3. 脚本取 `list(Path("/tmp").iterdir())` 拿到的是 B 的图，但任务ID还是A的
+**根因**：`download_result()` 返回文件列表后，caller **不用这个列表**，反而用 `glob("*.png")` 重新扫描目标目录。目录里残留着早期生成的同名文件（更大、更早），`glob` 按修改时间取到的是旧残留，不是刚下载的新文件。
 
-### 修复方案
-每个角色/场景用**自己的目录**做下载目标，不用共享 `/tmp`：
+**原则**：即梦后台截图正确 ≠ 本地文件正确。必须本地验证。
 
+**正确做法**：caller 直接用 `download_result` 返回的文件列表，绝不再 glob：
 ```python
-# 错误：共用 /tmp
-imgs = download_result(r["submit_id"], TMP_DIR)
+# ❌ 错误：download_result 返回后 caller 又 glob，踩到旧残留
+downloaded = download_result(submit_id, char_dir)
+latest = max(Path(char_dir).glob("*.png"), ...)  # 错！
 
-# 正确：每个角色用自己的目录
-imgs = download_result(r["submit_id"], char_dir)
+# ✅ 正确：直接用返回列表
+downloaded = download_result(submit_id, char_dir)
+latest = max(downloaded, key=lambda f: Path(f).stat().st_mtime)
 ```
 
-`download_result` 内部用 `max(imgs, key=lambda f: Path(f).stat().st_mtime)` 取最新文件做兜底。
+**脚本调用规范**：`download_result` 返回的是列表，caller 必须直接使用，不允许二次扫描目录。
+
+## 文件冲突陷阱（共享目录）
+
+**根因**：多个角色并发时，共用 `/tmp` 会互相覆盖文件。
+
+**修复**：每个角色/场景用**自己的目录**做下载目标：
+```python
+imgs = download_result(r["submit_id"], char_dir)  # char_dir 是角色独立目录
+```
+
+两层修复**必须同时应用**，缺一不可。
 
 ## 六视图图生图失败陷阱
 

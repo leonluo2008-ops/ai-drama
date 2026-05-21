@@ -9,9 +9,9 @@ description: AI短剧视频生成Pipeline — 从剧本到角色图→场景图�
 
 | 层级 | 位置 | 职责 |
 |------|------|------|
-| 编排层 | SKILL.md（OpenClaw workspace） | 唯一入口，Stage分段组织，数据契约定义 |
-| 生成层 | references/stage*.md | 各Stage的Prompt模板，独立可替换 |
-| 工具层 | scripts/*.py | 集中工具调用（dreamina、ffmpeg等）|
+| 编排层 | SKILL.md | 唯一入口，Stage分段组织，数据契约定义 |
+| 生成层 | references/*.md | prompt 规格说明（视角列表/约束条件）+ 方法论文档 |
+| 工具层 | scripts/*.py | 执行命令、文件操作，不含业务内容 |
 
 ### 设计原则：框架 > 模板
 
@@ -121,7 +121,7 @@ AI负责：信息完整呈现 + 方案建议 + 执行
 
 ### 即梦 5.0 prompt 雷区
 - **禁止用 portrait photo/portrait**（model 5.0 会出插画/卡通风，不是写实人像）
-- **服装图禁止**：fashion photography，用 flat lay, pure white background, top-down view, all items fully visible
+- **服装图**：需要纯白背景、俯视角度（flat lay）、所有物品完整可见，避免 fashion photography 风格
 
 ### 种族/风格铁律 ⚠️ 必须遵守
 **所有角色 prompt 必须以 `Asian Chinese` 开头**，不能用模糊写法。模型默认会混入欧美人种，必须强制锁定。
@@ -152,7 +152,8 @@ face_prompt = "Asian Chinese male, Asian Chinese face, young handsome man..."
 - 文件不是其他任务覆盖后的残留
 本地验证通过后再发飞书。不要只看 dreamina 后台截图就发。
 
-### 六视图已知问题 ✅ 已修复
+### 六视图参考图必须覆盖六个视角
+详见 `references/sixview-template.md`
 
 ## ⚠️ 关键教训：Stage-4 缺少「镜头规划表」步骤
 详见 `references/shot-planning-lesson.md`
@@ -200,57 +201,56 @@ AI输出分镜脚本
 
 ### 分支判断：有参考图 vs 无参考图
 
+**脚本当前只支持 `character` 类型**（三步全跑：面部→服装→六视图）。
+参考图分支（面部+服装图生图）需要脚本支持 `--face_image`/`--outfit_image` 参数，脚本尚未实现。
+
 ```
 用户提供了参考图？
-  ↓ 是（推荐）              ↓ 否
-character_with_ref        手动三步：
-（面部+服装均图生图）      character_face
-                           character_outfit
-                           character_sixview
+  ↓ 是（参考图暂未支持）
+  面部→服装→六视图均用文生图生成
+  
+  ↓ 否（当前可用）
+  character 类型，三步文生图
 ```
 
 ### dreamina_generate.py type 清单
 
-| type | 场景 | 必选参数 |
-|------|------|----------|
-| `character_with_ref` | 有参考图：一次性跑完面部+服装+六视图 | `--face_image` + `--outfit_image` |
-| `character_face` | 无参考图：只生面部图（文生图） | `--face_prompt` |
-| `character_outfit` | 无参考图：只生服装图（文生图） | `--outfit_prompt` |
-| `character_sixview` | 无参考图：六视图（图生图） | `--face_image` + `--outfit_image` |
+|| type | 场景 | 必选参数 |
+||------|------|----------|
+|| `character` | 角色定妆照（面部→服装→六视图，全流程） | `--character` + `--face_prompt` + `--outfit_prompt` |
+|| `scene` | 场景大图（文生图） | `--scene` + `--prompt` |
+|| `scene_multi` | 场景多角度图（图生图） | `--scene` + `--source`（源图路径） |
+|| `storyboard_panel` | 分镜格图（文生图） | `--panel` + `--prompt` |
 
-### 有参考图流程（推荐）
+### character 类型命令
 
 ```bash
 python scripts/dreamina_generate.py \
-  --type character_with_ref \
+  --type character \
   --project "{项目名}" \
   --character "{角色名}" \
-  --face_image "/path/to/面部参考图.jpg" \
-  --outfit_image "/path/to/服装参考图.jpg" \
+  --face_prompt "{Asian Chinese female, long straight black hair...}" \
+  --outfit_prompt "{描述角色服装的英文文本}" \
   --ratio 1:1
 ```
 
-### 无参考图流程
+### 其他 type 命令
 
 ```bash
-# Step 1: 面部图
+# 场景大图
 python scripts/dreamina_generate.py \
-  --type character_face --project "{项目}" --character "{角色}" \
-  --face_prompt "{Asian Chinese female, long straight black hair...}" \
-  --ratio 1:1
+  --type scene --project "{项目}" --scene "{场景名}" \
+  --prompt "{场景描述}" --ratio 1:1
 
-# Step 2: 服装图
+# 场景多角度图（图生图，以场景大图为源）
 python scripts/dreamina_generate.py \
-  --type character_outfit --project "{项目}" --character "{角色}" \
-  --outfit_prompt "{描述角色服装的英文文本}" \
-  --ratio 1:1
+  --type scene_multi --project "{项目}" --scene "{场景名}" \
+  --source "/path/to/场景大图.png" --ratio 1:1
 
-# Step 3: 六视图（以Step1+2的结果为参考图）
+# 分镜格图
 python scripts/dreamina_generate.py \
-  --type character_sixview --project "{项目}" --character "{角色}" \
-  --face_image "projects/{项目}/02-characters/{角色}/{角色}_面部.png" \
-  --outfit_image "projects/{项目}/02-characters/{角色}/{角色}_服装.png" \
-  --ratio 1:1
+  --type storyboard_panel --project "{项目}" \
+  --panel "1" --prompt "{分镜描述}" --ratio 16:9
 ```
 
 ### 即梦 query_result 下载逻辑 ⚠️ 关键 bug

@@ -201,17 +201,18 @@ AI输出分镜脚本
 
 ### 分支判断：有参考图 vs 无参考图
 
-**脚本当前只支持 `character` 类型**（三步全跑：面部→服装→六视图）。
-参考图分支（面部+服装图生图）需要脚本支持 `--face_image`/`--outfit_image` 参数，脚本尚未实现。
-
 ```
 用户提供了参考图？
-  ↓ 是（参考图暂未支持）
-  面部→服装→六视图均用文生图生成
-  
-  ↓ 否（当前可用）
-  character 类型，三步文生图
+  ↓ 是
+  ┌─ 有 --face_image → 面部用参考图图生图（跳过面部生成）
+  ├─ 有 --outfit_image → 服装用参考图（跳过服装生成）
+  └─ 六视图 → 用 --face_image + --outfit_image 做图生图
+
+  ↓ 否
+  character 类型，三步全跑：面部→服装→六视图（均为文生图）
 ```
+
+**核心规则**：默认使用参考图中的服装，不额外生成。除非用户明确要求「服化道设计」才走独立生成流程。
 
 ### dreamina_generate.py type 清单
 
@@ -225,6 +226,16 @@ AI输出分镜脚本
 ### character 类型命令
 
 ```bash
+# 有参考图：默认使用参考图中的服装，跳过服装生成
+python scripts/dreamina_generate.py \
+  --type character \
+  --project "{项目名}" \
+  --character "{角色名}" \
+  --face_image "/path/to/参考图.png" \
+  --outfit_image "/path/to/参考图.png" \
+  --ratio 1:1
+
+# 无参考图：三步全跑（文生图）
 python scripts/dreamina_generate.py \
   --type character \
   --project "{项目名}" \

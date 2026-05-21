@@ -3,7 +3,11 @@
 dreamina_generate.py - Dreamina任务提交+轮询+下载统一入口
 
 用法：
-  # 生成角色定妆照
+  # 生成角色定妆照（有参考图）
+  python dreamina_generate.py --type character --project "项目名" --character "角色名" \
+    --face_image "/path/to/参考图.png" --outfit_image "/path/to/参考图.png" --ratio 1:1
+
+  # 生成角色定妆照（无参考图）
   python dreamina_generate.py --type character --project "项目名" --character "角色名" \
     --face_prompt "面部Prompt" --outfit_prompt "服装Prompt" --ratio 1:1
 
@@ -29,6 +33,29 @@ from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 OUTPUT_BASE = PROJECT_ROOT / "projects"
+SKILL_REFS = PROJECT_ROOT / "references"
+
+
+def _load_style():
+    """从 references/style.md 加载风格配置（如果存在）"""
+    style_path = SKILL_REFS / "style.md"
+    if not style_path.exists():
+        return {}
+    try:
+        content = style_path.read_text()
+        # 简单解析 YAML frontmatter 后的 art_direction
+        art_dir = {}
+        in_frontmatter = False
+        for line in content.splitlines():
+            if line.strip() == "---":
+                in_frontmatter = not in_frontmatter
+                continue
+            if in_frontmatter and ":" in line:
+                key, _, val = line.partition(":")
+                art_dir[key.strip()] = val.strip()
+        return art_dir
+    except Exception:
+        return {}
 
 
 def ensure_project_dir(project: str) -> Path:
@@ -176,44 +203,90 @@ def _build_scene_multi_prompt() -> str:
     )
 
 
-def run_character(project: str, character: str, face_prompt: str, outfit_prompt: str, ratio: str):
-    """生成角色定妆照"""
+def run_character(project: str, character: str, face_prompt: str, outfit_prompt: str, ratio: str,
+                  face_image: str = None, outfit_image: str = None):
+    """
+    生成角色定妆照
+
+    核心逻辑：
+    - 有 face_image → 跳过面部生成，直接用 face_image 作为面部参考图
+    - 有 outfit_image → 跳过服装生成，直接用 outfit_image 作为服装参考图
+    - 无参考图 → 三步全跑（文生图）
+    - 六视图总是用面部+服装参考图做图生图
+    """
     import shutil
     proj_dir = ensure_project_dir(f"{project}/02-characters/{character}")
     proj_dir.mkdir(parents=True, exist_ok=True)
     results = {}
 
-    # Step 1: 生成面部图
-    print(f"\n[角色:{character}] Step 1/3 生成面部图...", file=sys.stderr)
-    r = submit_and_wait(face_prompt, images=None, ratio=ratio)
-    if r["status"] != "success":
-        print(f"面部图生成失败: {r.get('error')}", file=sys.stderr)
-        return None
-    face_path = str(proj_dir / f"{character}_面部.png")
-    downloaded = download_result(r["submit_id"], str(proj_dir))
-    if downloaded:
-        latest = max(Path(proj_dir).glob("*.png"), key=lambda f: f.stat().st_mtime)
-        shutil.copy2(latest, face_path)
-        latest.unlink()
-        results["face"] = face_path
-        print(f"面部图已保存: {face_path}", file=sys.stderr)
+    # 加载风格配置（如果有）
+    style = _load_style()
+    art_direction = style.get("art_direction", "")
 
-    # Step 2: 生成服装参考图
-    print(f"\n[角色:{character}] Step 2/3 生成服装参考图...", file=sys.stderr)
-    r = submit_and_wait(outfit_prompt, images=None, ratio=ratio)
-    if r["status"] != "success":
-        print(f"服装图生成失败: {r.get('error')}", file=sys.stderr)
-        return None
-    outfit_path = str(proj_dir / f"{character}_服装.png")
-    downloaded = download_result(r["submit_id"], str(proj_dir))
-    if downloaded:
-        latest = max(Path(proj_dir).glob("*.png"), key=lambda f: f.stat().st_mtime)
-        shutil.copy2(latest, outfit_path)
-        latest.unlink()
+    # Step 1: 面部图（有无参考图分支）
+    face_path = None
+    if face_image:
+        # 有参考图：用参考图做面部图生图
+        print(f"\n[角色:{character}] Step 1/3 使用参考图生成面部图...", file=sys.stderr)
+        face_prompt_for_img2img = (
+            f"请严格根据参考图，生成一张人物的面部特写图。"
+            f"保持参考图中的发型、脸型、眼睛、配饰等所有特征完全一致。"
+            f"纯白色背景，人物居中。"
+        )
+        r = submit_and_wait(face_prompt_for_img2img, images=[face_image], ratio=ratio)
+        if r["status"] != "success":
+            print(f"面部图生成失败: {r.get('error')}", file=sys.stderr)
+            return None
+        face_path = str(proj_dir / f"{character}_面部.png")
+        downloaded = download_result(r["submit_id"], str(proj_dir))
+        if downloaded:
+            latest = max(Path(proj_dir).glob("*.png"), key=lambda f: f.stat().st_mtime)
+            shutil.copy2(latest, face_path)
+            latest.unlink()
+            results["face"] = face_path
+            print(f"面部图已保存: {face_path}", file=sys.stderr)
+    else:
+        # 无参考图：纯文字生成
+        print(f"\n[角色:{character}] Step 1/3 生成面部图...", file=sys.stderr)
+        r = submit_and_wait(face_prompt, images=[], ratio=ratio)
+        if r["status"] != "success":
+            print(f"面部图生成失败: {r.get('error')}", file=sys.stderr)
+            return None
+        face_path = str(proj_dir / f"{character}_面部.png")
+        downloaded = download_result(r["submit_id"], str(proj_dir))
+        if downloaded:
+            latest = max(Path(proj_dir).glob("*.png"), key=lambda f: f.stat().st_mtime)
+            shutil.copy2(latest, face_path)
+            latest.unlink()
+            results["face"] = face_path
+            print(f"面部图已保存: {face_path}", file=sys.stderr)
+
+    # Step 2: 服装参考图（有无参考图分支）
+    outfit_path = None
+    if outfit_image:
+        # 有参考图：直接复制参考图作为服装图
+        print(f"\n[角色:{character}] Step 2/3 使用参考图作为服装图...", file=sys.stderr)
+        outfit_path = str(proj_dir / f"{character}_服装.png")
+        shutil.copy2(outfit_image, outfit_path)
         results["outfit"] = outfit_path
         print(f"服装参考图已保存: {outfit_path}", file=sys.stderr)
+    else:
+        # 无参考图：纯文字生成服装图
+        print(f"\n[角色:{character}] Step 2/3 生成服装参考图...", file=sys.stderr)
+        r = submit_and_wait(outfit_prompt, images=[], ratio=ratio)
+        if r["status"] != "success":
+            print(f"服装图生成失败: {r.get('error')}", file=sys.stderr)
+            return None
+        outfit_path = str(proj_dir / f"{character}_服装.png")
+        downloaded = download_result(r["submit_id"], str(proj_dir))
+        if downloaded:
+            latest = max(Path(proj_dir).glob("*.png"), key=lambda f: f.stat().st_mtime)
+            shutil.copy2(latest, outfit_path)
+            latest.unlink()
+            results["outfit"] = outfit_path
+            print(f"服装参考图已保存: {outfit_path}", file=sys.stderr)
 
-    # Step 3: 图生图生成六视图
+    # Step 3: 六视图（总是用面部+服装参考图）
     print(f"\n[角色:{character}] Step 3/3 生成六视图定妆照...", file=sys.stderr)
     six_view_prompt = _build_sixview_prompt(face_path, outfit_path)
     r = submit_and_wait(six_view_prompt, images=[face_path, outfit_path], ratio=ratio)
@@ -239,7 +312,7 @@ def run_scene(project: str, scene: str, prompt: str, ratio: str):
     proj_dir.mkdir(parents=True, exist_ok=True)
 
     print(f"\n[场景:{scene}] 生成大场景全景图...", file=sys.stderr)
-    r = submit_and_wait(prompt, images=None, ratio=ratio)
+    r = submit_and_wait(prompt, images=[], ratio=ratio)
     if r["status"] != "success":
         print(f"场景图生成失败: {r.get('error')}", file=sys.stderr)
         return None
@@ -287,7 +360,7 @@ def run_storyboard_panel(project: str, panel: str, prompt: str, ratio: str):
     proj_dir.mkdir(parents=True, exist_ok=True)
 
     print(f"\n[分镜格:{panel}] 生成图片...", file=sys.stderr)
-    r = submit_and_wait(prompt, images=None, ratio=ratio)
+    r = submit_and_wait(prompt, images=[], ratio=ratio)
     if r["status"] != "success":
         print(f"分镜格生成失败: {r.get('error')}", file=sys.stderr)
         return None
@@ -312,8 +385,10 @@ def main():
     parser.add_argument("--character", help="角色名（character类型）")
     parser.add_argument("--scene", help="场景名（scene类型）")
     parser.add_argument("--panel", help="格编号（storyboard_panel类型）")
-    parser.add_argument("--face_prompt", help="面部Prompt（character类型）")
-    parser.add_argument("--outfit_prompt", help="服装Prompt（character类型）")
+    parser.add_argument("--face_prompt", help="面部Prompt（character类型，无参考图时）")
+    parser.add_argument("--outfit_prompt", help="服装Prompt（character类型，无参考图时）")
+    parser.add_argument("--face_image", help="面部参考图路径（character类型，有参考图时）")
+    parser.add_argument("--outfit_image", help="服装参考图路径（character类型，有参考图时）")
     parser.add_argument("--prompt", help="主Prompt（scene/storyboard_panel类型）")
     parser.add_argument("--source", help="源图路径（scene_multi类型）")
     parser.add_argument("--ratio", default="1:1", help="图片比例")
@@ -321,10 +396,33 @@ def main():
     args = parser.parse_args()
 
     if args.type == "character":
-        if not all([args.character, args.face_prompt, args.outfit_prompt]):
-            print("--character, --face_prompt, --outfit_prompt 均必须提供", file=sys.stderr)
-            sys.exit(1)
-        result = run_character(args.project, args.character, args.face_prompt, args.outfit_prompt, args.ratio)
+        # 有参考图时不需要 face_prompt/outfit_prompt，有参考图时必须至少有一个
+        has_face_ref = bool(args.face_image)
+        has_outfit_ref = bool(args.outfit_image)
+        has_face_prompt = bool(args.face_prompt)
+        has_outfit_prompt = bool(args.outfit_prompt)
+
+        if has_face_ref or has_outfit_ref:
+            # 有参考图：至少需要一个参考图
+            if not (has_face_ref or has_outfit_ref):
+                print("至少需要提供 --face_image 或 --outfit_image 其中一个参考图", file=sys.stderr)
+                sys.exit(1)
+            result = run_character(
+                args.project, args.character,
+                args.face_prompt or "", args.outfit_prompt or "",
+                args.ratio,
+                face_image=args.face_image, outfit_image=args.outfit_image
+            )
+        else:
+            # 无参考图：必须同时提供 face_prompt 和 outfit_prompt
+            if not (has_face_prompt and has_outfit_prompt):
+                print("无参考图时必须提供 --face_prompt 和 --outfit_prompt", file=sys.stderr)
+                sys.exit(1)
+            result = run_character(
+                args.project, args.character,
+                args.face_prompt, args.outfit_prompt,
+                args.ratio
+            )
 
     elif args.type == "scene":
         if not all([args.scene, args.prompt]):

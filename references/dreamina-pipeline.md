@@ -141,6 +141,85 @@ cmd = ["dreamina", "image2image",
        "--resolution_type=2k", "--model_version=5.0", "--poll=0"]
 ```
 
+## 场景图生成：环境图不能含角色 + 风格统一 ⚠️
+
+**Stage-3 场景图 = 纯环境/氛围图**，禁止出现角色。
+
+**关键方法：风格锚定词（所有场景prompt必须包含）**
+- 每个场景的prompt里必须包含**统一的风格词**，确保所有场景风格一致
+- 风格词一旦确定，所有场景都要包含，不能有的场景有有的没有
+- 风格词来源：从 `references/style.md` 的 `art_direction` 字段获取，作为统一风格锚定词
+- 示例风格词：`flat 2D cartoon style`（2D扁平卡通）、`warm yellow tones`（暖色调）、`teal blue tones`（冷色调）
+
+**prompt构造公式**：
+```
+{风格锚定词} + {场景英文描述} + NO HUMANS NO CHARACTERS
+```
+
+**示例**：
+```bash
+# 场景A（暖色调）
+--prompt="{风格锚定词}, {场景英文描述}, warm yellow tones, NO HUMANS NO CHARACTERS"
+
+# 场景B（冷色调）
+--prompt="{风格锚定词}, {场景英文描述}, teal blue tones, NO HUMANS NO CHARACTERS"
+```
+
+**失败经验**：
+- prompt含 "with workers" 导致意外出现人物 → 必须加 NO HUMANS NO CHARACTERS
+- 风格词不统一导致场景间风格漂移 → 所有场景必须包含相同的风格锚定词
+- 中文词（如"瞳孔入口"）触发过滤 → 纯英文描述场景内容
+
+### ⚠️ 场景图风格一致性：当前技术限制
+
+**即梦没有独立的「风格迁移」功能**。`image2image` 会同时迁移参考图的**内容+风格**，无法做到「只迁移风格、不迁移角色」。
+
+**实测结论**：
+- 纯文生图（prompt写风格词）→ 风格可能漂移，不同场景之间风格可能不一致
+- 用角色参考图做 image2img → 风格一致了，但角色也被迁移进去了 ❌
+
+**正确工作流**：
+1. 场景图用纯文生图（`text2image`，不加 `--images`）
+2. prompt 写清楚风格词 + "NO HUMANS NO CHARACTERS"
+3. 接受风格可能存在一定漂移（当前技术限制）
+4. 生成后本地验证图片内容（`mcp_zai_analyze_image`）
+5. 发飞书，由用户确认是否接受
+
+**禁止**：用角色参考图做 scene img2img（会把角色带进场景）
+
+## 文生图 prompt 过滤风险 ⚠️
+
+### "minion" 关键词触发过滤
+`"minion style cartoon"` 会导致 `generation failed: final generation failed`。
+
+**解法**：用色调引导替代风格词
+```bash
+# ❌ 失败：含 "minion"
+--prompt="minion style yellow cartoon factory..."
+
+# ✅ 成功：用 warm yellow tones + flat 2D cartoon style 引导
+--prompt="cartoon interior, flat 2D cartoon style, transparent glass dome ceiling, warm yellow tones, soft blue light, volumetric rays, smooth surfaces, bright atmosphere, NO HUMANS NO CHARACTERS"
+```
+
+### 中英混合触发过滤
+prompt 中混入中文（如"瞳孔入口"、"角膜穹顶"）会导致 generation failed。
+
+**解法**：全部使用英文描述。
+
+### --poll=0 隐藏错误 ⚠️ 严重
+`--poll=0` 只提交不等待，命令返回 submit_id 后立即退出。**任务在服务器端可能已经失败**，不会收到报错。
+
+**必须**：提交后立即轮询查询状态。
+```bash
+# ❌ 错误：假设提交成功
+dreamina text2image --prompt="..." --poll=0 && echo "成功"
+
+# ✅ 正确：提交后必须查状态
+submit_id=$(dreamina text2image --prompt="..." --poll=0 | jq -r '.submit_id')
+sleep 120
+status=$(dreamina query_result --submit_id $submit_id | jq -r '.gen_status')
+```
+
 ## Dreamina CLI 关键参数
 
 ```
@@ -159,3 +238,22 @@ cmd = ["dreamina", "image2image",
 - 轮询间隔：10秒
 - model 5.0 = 最新模型
 - 2K 图对 VIP 免费
+
+## 外部 API 调用注意事项
+
+### Notion API：必须用 terminal，不能用 execute_code ⚠️
+
+`sandbox` 环境不继承 `.env` 变量。`execute_code` 中的 `os.getenv("NOTION_API_KEY")` 返回 `None`，导致 401 Unauthorized。
+
+**正确做法**：用 `terminal` 显式 `source` 后调用 curl：
+```bash
+source ~/.hermes/.env && curl -s "https://api.notion.com/v1/blocks/{page_id}/children" \
+  -H "Authorization: Bearer $NOTION_API_KEY" \
+  -H "Notion-Version: 2025-09-03"
+```
+
+**禁止**：`execute_code` 中用 `urllib.request.urlopen` 调用 Notion API（会报 401）。
+
+### Notion 页面 URL 解析
+Notion 分享链接格式：`https://www.notion.so/{title}-{page_id}?source=copy_link`
+- 提取 `page_id`：去掉 `?source=copy_link` 后缀，剩余部分最后 32 位（或带 dash 的 UUID 格式）

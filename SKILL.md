@@ -137,11 +137,13 @@ AI负责：信息完整呈现 + 方案建议 + 执行
 **正确示例**：
 ```
 # ❌ 失败：过多修饰词
-"minion style male character, yellow skin, orange short spiky hair, green eyes, silver goggles on head, blue denim overalls, white t-shirt, big friendly smile, confident expression, pure white background"
+"minion style male character, yellow skin, orange short spiky hair, green eyes, silver goggles on head, blue denim overalls, teal accents, white t-shirt, big friendly smile, confident expression, pure white background"
 
-# ✅ 成功：精简核心
+# ✅ 成功：精简核心（删除形容词词组，保留主体+颜色+关键元素）
 "minion style male character, yellow skin, orange hair, green eyes, silver goggles, blue overalls, white t-shirt, pure white background"
 ```
+
+**注**：卡通风格角色（如小黄人）不需要 `Asian Chinese` 前缀；写实人像风格角色才需要。
 
 ### 种族/风格铁律 ⚠️ 必须遵守
 **所有角色 prompt 必须以 `Asian Chinese` 开头**，不能用模糊写法。模型默认会混入欧美人种，必须强制锁定。

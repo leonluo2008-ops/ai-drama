@@ -263,34 +263,29 @@ AI输出分镜脚本
 
 ## Stage-2 角色图生成
 
-### 分支判断：有参考图 vs 无参考图
+### 分支判断：面部生成三种模式
 
 ```
-用户提供了参考图？
+用户提供了 --face_image + --face_prompt？
   ↓ 是
-  ┌─ 有 --face_image → 面部用参考图图生图（跳过面部生成）
-  ├─ 有 --outfit_image → 服装用参考图（跳过服装生成）
-  └─ 六视图 → 用 --face_image + --outfit_image 做图生图
+  分支3：参考图驱动风格一致性，face_prompt 驱动差异化
+  （用于：同一参考图生成多个差异化角色）
 
-  ↓ 否
-  character 类型，三步全跑：面部→服装→六视图（均为文生图）
+用户只提供了 --face_image？
+  ↓ 是
+  分支1：参考图图生图，保持所有特征不变
+  （用于：生成与参考图完全一致的角色）
+
+用户只提供了 --face_prompt？
+  ↓ 是
+  分支2：纯文生图
+  （用于：无参考图时）
 ```
-
-**核心规则**：默认使用参考图中的服装，不额外生成。除非用户明确要求「服化道设计」才走独立生成流程。
-
-### dreamina_generate.py type 清单
-
-|| type | 场景 | 必选参数 |
-||------|------|----------|
-|| `character` | 角色定妆照（面部→服装→六视图，全流程） | `--character` + `--face_prompt` + `--outfit_prompt` |
-|| `scene` | 场景大图（文生图） | `--scene` + `--prompt` |
-|| `scene_multi` | 场景多角度图（图生图） | `--scene` + `--source`（源图路径） |
-|| `storyboard_panel` | 分镜格图（文生图） | `--panel` + `--prompt` |
 
 ### character 类型命令
 
 ```bash
-# 有参考图：默认使用参考图中的服装，跳过服装生成
+# 分支1：有参考图 → 图生图（保持参考图所有特征）
 python scripts/dreamina_generate.py \
   --type character \
   --project "{项目名}" \
@@ -299,13 +294,24 @@ python scripts/dreamina_generate.py \
   --outfit_image "/path/to/参考图.png" \
   --ratio 1:1
 
-# 无参考图：三步全跑（文生图）
+# 分支2：无参考图 → 文生图（三步全跑）
 python scripts/dreamina_generate.py \
   --type character \
   --project "{项目名}" \
   --character "{角色名}" \
   --face_prompt "{根据项目风格决定是否加Asian Chinese前缀}" \
   --outfit_prompt "{描述角色服装的英文文本}" \
+  --ratio 1:1
+
+# 分支3：参考图 + 差异化prompt → 图生图（风格一致+面部差异化）
+# 场景：同一参考图生成多个角色（如莱恩用托比的参考图，但安全帽颜色不同）
+python scripts/dreamina_generate.py \
+  --type character \
+  --project "{项目名}" \
+  --character "{角色名}" \
+  --face_image "/path/to/参考图.png" \
+  --face_prompt "{差异化描述，如：blue safety helmet}" \
+  --outfit_image "/path/to/参考图.png" \
   --ratio 1:1
 ```
 

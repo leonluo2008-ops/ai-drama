@@ -19,19 +19,21 @@
 ## 当前项目风格
 
 ```yaml
-art_direction: Pixel Art style, cyberpunk city night aesthetic, blocky pixel brushstrokes
-color_palette: high-saturation neon colors (red, blue, yellow, green), dark background with cold grays
-lighting: neon light source, blocky gradient shadows, strong contrast between bright neon and dark areas
-mood: bustling night city atmosphere, retro 8-bit digital art aesthetic, cold yet vibrant
-composition: 俯视广角构图 preferred for scenes
-texture: pixelated details, clear outlines, retro digital art质感
-quality: high detail, 2k resolution
+art_direction: 摄影级写实人像，亚洲面孔，电影质感，光影细腻，高细节，2K分辨率
+color_palette: 自然色调，暖调背景，肤色真实
+lighting: 电影布光，伦勃朗光，自然眼神光，柔和阴影
+mood: 电影质感，氛围感强，叙事感
+composition: 中景构图为主，兼顾特写
+texture: 皮肤纹理清晰，真实感强，无过度美化
+quality: 8K超高细节，RAW格式质感
 ```
+
+**铁律：所有角色 prompt 必须以 Asian Chinese 开头，强调亚洲中国人种。**
 
 ---
 
-## 修改记录
+## 修改记录（通用格式）
 
 | 日期 | 修改内容 |
 |------|---------|
-| 2026-05-20 | 初始化：Pixel Art + Cyberpunk 风格 |
+| YYYY-MM-DD | {修改内容描述} |

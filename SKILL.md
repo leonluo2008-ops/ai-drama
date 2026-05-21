@@ -13,6 +13,22 @@ description: AI短剧视频生成Pipeline — 从剧本到角色图→场景图�
 | 生成层 | references/stage*.md | 各Stage的Prompt模板，独立可替换 |
 | 工具层 | scripts/*.py | 集中工具调用（dreamina、ffmpeg等）|
 
+### 设计原则：框架 > 模板
+
+**核心原则**：Skill 是工作流框架，不是硬编码模板。
+
+| 原则 | 含义 |
+|------|------|
+| **占位符思维** | 具体值→变量。路径/ID/示例内容一律留占位符。新机器/新用户/新场景能直接用的才是好框架。 |
+| **禁止套模板** | 示例=参考，不是素材。照搬结构但不知道原因=套路化，能举一反三=原理化。封装前先问：为什么work？ |
+| **理解原理** | 抽取推理链而非格式。封装的是决策逻辑，不是操作步骤。 |
+| **工具与逻辑分离** | Skill只管「说什么」，scripts只管「怎么做」，references只管「内容模板」。工具升级只改scripts，不动SKILL.md。 |
+
+**违反这些原则的特征（发现问题时的自我检查）**：
+- 脚本里有硬编码的角色名、项目名、具体prompt内容
+- SKILL.md 引用了特定实测案例的细节
+- 新用户/新项目无法直接使用，需要大面积替换内容才能跑
+
 ## Pipeline Stage 顺序
 
 ```
@@ -90,9 +106,9 @@ AI负责：信息完整呈现 + 方案建议 + 执行
 - **脚本加载逻辑**：见 `references/dreamina-pipeline.md`
 - **切换风格后必须**：清理旧图 → 重新生成 → 发飞书确认 → commit
 
-### 参考图 + 风格叠加 workflow（2026-05-20 实测 ✅）
+### 参考图 + 风格叠加 workflow
 
-**问题**：用户提供的参考图（写实人像）风格 ≠ 项目风格（像素风），两者如何统一？
+**问题**：用户提供的参考图（写实人像）风格 ≠ 项目风格，两者如何统一？
 
 **解法**：参考图驱动「角色是谁」，style.md 驱动「画成什么风格」，叠加输出
 
@@ -103,13 +119,40 @@ AI负责：信息完整呈现 + 方案建议 + 执行
 4. 服装同理：参考图服装特征描述 + 风格标签 → 服装平铺图
 5. 六视图用新版面部+新版服装图生图
 
-**实测有效**：沈晚宁案例（参考图=写实女性 → 输出=像素风女性，角色特征保留）
-
 ### 即梦 5.0 prompt 雷区
 - **禁止用 portrait photo/portrait**（model 5.0 会出插画/卡通风，不是写实人像）
 - **服装图禁止**：fashion photography，用 flat lay, pure white background, top-down view, all items fully visible
 
----
+### 种族/风格铁律 ⚠️ 必须遵守
+**所有角色 prompt 必须以 `Asian Chinese` 开头**，不能用模糊写法。模型默认会混入欧美人种，必须强制锁定。
+
+```python
+# ❌ 错误：模型可能出欧美人
+face_prompt = "young handsome man, black short hair..."
+
+# ✅ 正确：强制亚洲中国人
+face_prompt = "Asian Chinese male, Asian Chinese face, young handsome man..."
+```
+
+**style.md 必须与项目实际风格一致**。如果 style.md 设成一种风格但项目要另一种，会造成风格错乱。切换风格后必须验证脚本实际调用了 style.md 的内容。
+
+### 参考图必须真正使用 ⚠️ 关键
+收到用户参考图后，必须：
+1. `mcp_zai_analyze_image` 提取外观特征（发型、服装、配饰）
+2. outfit_prompt **必须按参考图描述**，不能用脑补
+3. 面部图优先用参考图做图生图（`use_ref=True`）
+4. 六视图 prompt 里也要写明参考图的特征（发型/配饰）
+
+**本次教训**：收到参考图后如果outfit_prompt写的是与参考图无关的内容，会导致服装完全不对。outfit_prompt 必须严格按参考图描述。
+
+### 发图前必须验证 ⚠️
+发图给用户前，先 `mcp_zai_analyze_image` 本地文件，确认：
+- 种族正确（亚洲中国人）
+- 关键特征存在（参考图的配饰、服装颜色等）
+- 文件不是其他任务覆盖后的残留
+本地验证通过后再发飞书。不要只看 dreamina 后台截图就发。
+
+### 六视图已知问题 ✅ 已修复
 
 ## ⚠️ 关键教训：Stage-4 缺少「镜头规划表」步骤
 详见 `references/shot-planning-lesson.md`
@@ -145,7 +188,7 @@ AI输出分镜脚本
 - 以"SSeedance只能生成X秒"为由建议合并/拆分场次
 - 把「编剧给的场次时长」当成最终场次（那是叙事参考，AI需要重新按公式计算）
 
-**关键纠正（2026-05-20）**：
+**关键纠正**：
 - 场景划分是AI的职责，不是编剧的职责
 - 编剧发送的是「叙事参考时长」，AI必须先读剧本，再按公式重新计算
 - 时长不足4秒 → 告知编剧延展内容，不合并场次
@@ -153,14 +196,65 @@ AI输出分镜脚本
 
 ---
 
-## Stage-2 角色图生成（实测踩坑）
+## Stage-2 角色图生成
 
-### 角色图一代生成流程
-1. **面部图**：文生图，1:1 比例，2K
-2. **服装图**：文生图，1:1 比例，2K（平铺俯视图）
-3. **六视图**：图生图，用面部图+服装图做参考驱动
+### 分支判断：有参考图 vs 无参考图
 
-### 即梦 query_result 下载逻辑 ⚠️ 关键 bug（2026-05-20 实测）
+```
+用户提供了参考图？
+  ↓ 是（推荐）              ↓ 否
+character_with_ref        手动三步：
+（面部+服装均图生图）      character_face
+                           character_outfit
+                           character_sixview
+```
+
+### dreamina_generate.py type 清单
+
+| type | 场景 | 必选参数 |
+|------|------|----------|
+| `character_with_ref` | 有参考图：一次性跑完面部+服装+六视图 | `--face_image` + `--outfit_image` |
+| `character_face` | 无参考图：只生面部图（文生图） | `--face_prompt` |
+| `character_outfit` | 无参考图：只生服装图（文生图） | `--outfit_prompt` |
+| `character_sixview` | 无参考图：六视图（图生图） | `--face_image` + `--outfit_image` |
+
+### 有参考图流程（推荐）
+
+```bash
+python scripts/dreamina_generate.py \
+  --type character_with_ref \
+  --project "{项目名}" \
+  --character "{角色名}" \
+  --face_image "/path/to/面部参考图.jpg" \
+  --outfit_image "/path/to/服装参考图.jpg" \
+  --ratio 1:1
+```
+
+### 无参考图流程
+
+```bash
+# Step 1: 面部图
+python scripts/dreamina_generate.py \
+  --type character_face --project "{项目}" --character "{角色}" \
+  --face_prompt "{Asian Chinese female, long straight black hair...}" \
+  --ratio 1:1
+
+# Step 2: 服装图
+python scripts/dreamina_generate.py \
+  --type character_outfit --project "{项目}" --character "{角色}" \
+  --outfit_prompt "{描述角色服装的英文文本}" \
+  --ratio 1:1
+
+# Step 3: 六视图（以Step1+2的结果为参考图）
+python scripts/dreamina_generate.py \
+  --type character_sixview --project "{项目}" --character "{角色}" \
+  --face_image "projects/{项目}/02-characters/{角色}/{角色}_面部.png" \
+  --outfit_image "projects/{项目}/02-characters/{角色}/{角色}_服装.png" \
+  --ratio 1:1
+```
+
+### 即梦 query_result 下载逻辑 ⚠️ 关键 bug
+
 - **根因**：`download_result` 下载到共享 `/tmp`，4 个角色并发轮跑时互相覆盖文件
 - **现象**：dreamina后台看是对的，但本地文件是错的（其他任务出的图）
 - **修复方案**：每个角色/场景用**各自独立的目录**做下载目标目录
@@ -187,26 +281,41 @@ AI输出分镜脚本
   Path(src).unlink()
   ```
 
-### 六视图始终跳过的已知问题 ✅ 已修复（2026-05-20）
-- **根因不是 results 字典写入**：`--images` 参数格式错误
-- **真实根因**：`dreamina image2image --images img1 img2` 报错（只接受 `--images=path` 格式），Python 解析时把第二个路径当成独立参数导致整条命令失败
-- **修复方案**：
-  ```python
-  # ❌ 错误：--images 拆成独立参数
-  cmd = ["dreamina", "image2image", "--images", img1, img2, "--prompt", prompt, ...]
-  
-  # ✅ 正确：--images= 格式
-  cmd = ["dreamina", "image2image", "--images="+img1, "--images="+img2, "--prompt="+prompt, ...]
-  ```
-- **同一位移问题**：`--prompt` `--ratio` `--resolution_type` `--model_version` `--poll` 全部要用 `--key=value` 格式，不能空格分隔
-- **验证**：修好后四个角色六视图全部生成成功（submit → 50秒内 success → 下载保存）
+### dreamina CLI 参数格式 ⚠️
+
+```
+# ❌ 错误：--images 拆成独立参数，或 --images <p1> <p2> 空格分隔
+cmd = ["dreamina", "image2image", "--images", img1, img2, "--prompt", prompt, ...]
+
+# ✅ 正确：--images= 格式，重复flag每个图单独写
+cmd = ["dreamina", "image2image",
+       f"--images={img1}", f"--images={img2}",
+       f"--prompt={prompt}", f"--ratio={ratio}", ...]
+```
+
+**所有参数必须用 `--key=value` 格式**，不能用空格分隔：`--prompt {val}` 是错的，`--prompt={val}` 是对的。
 
 ---
 
-## 当前项目（2026-05-20）
+## 工作目录约定
 
-- 项目名：guyan-mother-appeared（顾家寿宴·我妈出现）
-- 角色：顾砚、林浅浅（秘书）、沈晚宁（妻子）、我妈
-- 工具：即梦CLI（dreamina），model 5.0，2K免费（VIP）
-- 状态：角色一代（面部+服装+场景）已生成，飞书确认中；六视图待跑
-- references：`references/dreamina-pipeline.md` — 详细技术细节和踩坑记录
+每个项目独立目录，结构如下：
+
+```
+projects/
+  {项目名}/
+    01-scripts/          # 剧本
+    02-characters/       # 角色图
+      {角色名}/
+        {角色}_面部.png
+        {角色}_服装.png
+        {角色}_六视图.png
+    03-scenes/           # 场景图
+    04-storyboards/      # 分镜脚本
+    05-audio/            # 音频
+references/
+  style.md              # 风格锚定（art_direction）
+  dreamina-pipeline.md   # 工具层技术细节
+```
+
+**角色目录命名**：用角色真实名字，不用代号。

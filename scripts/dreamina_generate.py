@@ -149,7 +149,7 @@ def download_result(submit_id: str, output_path: str) -> list:
     if result.returncode != 0:
         print(f"下载失败: {result.stderr}", file=sys.stderr)
         return []
-    # 返回目录下所有图片
+    # 返回目录下所有图片（任意格式）
     downloaded = []
     for f in Path(output_path).iterdir():
         if f.suffix.lower() in (".png", ".jpg", ".jpeg", ".webp"):
@@ -172,8 +172,13 @@ def _load_prompt_template(name: str) -> str:
     return content.strip()
 
 
-def _build_sixview_prompt(face_path: str, outfit_path: str) -> str:
-    """根据六视图模板构建 prompt"""
+def _build_sixview_prompt(ref_count: int) -> str:
+    """
+    根据参考图数量构建六视图 prompt
+
+    ref_count=1: 单参考图六视图（用户提供1张全身图时）
+    ref_count=2: 双参考图六视图（面部+服装分开时）
+    """
     six_views = [
         "人物面部正面特写",
         "人物面部45度侧面特写",
@@ -183,11 +188,20 @@ def _build_sixview_prompt(face_path: str, outfit_path: str) -> str:
         "人物背面全身照",
     ]
     views_text = "、".join(six_views)
-    return (
-        f"参考图生图：请严格根据图片1中的角色，生成一张人物的六视图角色定妆照；"
-        f"不要出现文字，要求纯白色背景，有{views_text}。"
-        f"该人物穿着图片2中的服饰。注意：只输出成一张图片。"
-    )
+    if ref_count == 1:
+        return (
+            f"参考图生图：请严格根据参考图中的角色，生成一张六视图角色定妆照；"
+            f"不要出现文字，要求纯白色背景，有{views_text}；"
+            f"保持参考图中的发型、脸型、眼睛、服装、配色所有特征完全一致。"
+            f"注意：只输出成一张图片。"
+        )
+    else:
+        return (
+            f"参考图生图：请严格根据图片1中的角色，生成一张六视图角色定妆照；"
+            f"不要出现文字，要求纯白色背景，有{views_text}；"
+            f"该人物穿着图片2中的服饰。"
+            f"注意：只输出成一张图片。"
+        )
 
 
 def _build_scene_multi_prompt() -> str:
@@ -240,9 +254,9 @@ def run_character(project: str, character: str, face_prompt: str, outfit_prompt:
         face_path = str(proj_dir / f"{character}_面部.png")
         downloaded = download_result(r["submit_id"], str(proj_dir))
         if downloaded:
-            latest = max(Path(proj_dir).glob("*.png"), key=lambda f: f.stat().st_mtime)
+            latest = max(downloaded, key=lambda f: Path(f).stat().st_mtime)
             shutil.copy2(latest, face_path)
-            latest.unlink()
+            Path(latest).unlink()
             results["face"] = face_path
             print(f"面部图已保存: {face_path}", file=sys.stderr)
     else:
@@ -255,9 +269,9 @@ def run_character(project: str, character: str, face_prompt: str, outfit_prompt:
         face_path = str(proj_dir / f"{character}_面部.png")
         downloaded = download_result(r["submit_id"], str(proj_dir))
         if downloaded:
-            latest = max(Path(proj_dir).glob("*.png"), key=lambda f: f.stat().st_mtime)
+            latest = max(downloaded, key=lambda f: Path(f).stat().st_mtime)
             shutil.copy2(latest, face_path)
-            latest.unlink()
+            Path(latest).unlink()
             results["face"] = face_path
             print(f"面部图已保存: {face_path}", file=sys.stderr)
 
@@ -280,25 +294,31 @@ def run_character(project: str, character: str, face_prompt: str, outfit_prompt:
         outfit_path = str(proj_dir / f"{character}_服装.png")
         downloaded = download_result(r["submit_id"], str(proj_dir))
         if downloaded:
-            latest = max(Path(proj_dir).glob("*.png"), key=lambda f: f.stat().st_mtime)
+            latest = max(downloaded, key=lambda f: Path(f).stat().st_mtime)
             shutil.copy2(latest, outfit_path)
-            latest.unlink()
+            Path(latest).unlink()
             results["outfit"] = outfit_path
             print(f"服装参考图已保存: {outfit_path}", file=sys.stderr)
 
-    # Step 3: 六视图（总是用面部+服装参考图）
+    # Step 3: 六视图（根据参考图数量决定传几张图）
     print(f"\n[角色:{character}] Step 3/3 生成六视图定妆照...", file=sys.stderr)
-    six_view_prompt = _build_sixview_prompt(face_path, outfit_path)
-    r = submit_and_wait(six_view_prompt, images=[face_path, outfit_path], ratio=ratio)
+    has_single_ref = bool(face_image) and face_image == outfit_image
+    if has_single_ref:
+        six_view_prompt = _build_sixview_prompt(ref_count=1)
+        six_view_images = [face_image]
+    else:
+        six_view_prompt = _build_sixview_prompt(ref_count=2)
+        six_view_images = [face_path, outfit_path]
+    r = submit_and_wait(six_view_prompt, images=six_view_images, ratio=ratio)
     if r["status"] != "success":
         print(f"六视图生成失败: {r.get('error')}", file=sys.stderr)
         return None
     six_view_path = str(proj_dir / f"{character}_六视图.png")
     downloaded = download_result(r["submit_id"], str(proj_dir))
     if downloaded:
-        latest = max(Path(proj_dir).glob("*.png"), key=lambda f: f.stat().st_mtime)
+        latest = max(downloaded, key=lambda f: Path(f).stat().st_mtime)
         shutil.copy2(latest, six_view_path)
-        latest.unlink()
+        Path(latest).unlink()
         results["six_view"] = six_view_path
         print(f"六视图已保存: {six_view_path}", file=sys.stderr)
 
@@ -320,9 +340,9 @@ def run_scene(project: str, scene: str, prompt: str, ratio: str):
     scene_path = str(proj_dir / f"{scene}_大图.png")
     downloaded = download_result(r["submit_id"], str(proj_dir))
     if downloaded:
-        latest = max(Path(proj_dir).glob("*.png"), key=lambda f: f.stat().st_mtime)
+        latest = max(downloaded, key=lambda f: Path(f).stat().st_mtime)
         shutil.copy2(latest, scene_path)
-        latest.unlink()
+        Path(latest).unlink()
         print(f"场景大图已保存: {scene_path}", file=sys.stderr)
         return {"scene_image": scene_path}
     return None
@@ -345,9 +365,9 @@ def run_scene_multi(project: str, scene: str, source: str, ratio: str):
     multi_path = str(proj_dir / f"{scene}_多角度.png")
     downloaded = download_result(r["submit_id"], str(proj_dir))
     if downloaded:
-        latest = max(Path(proj_dir).glob("*.png"), key=lambda f: f.stat().st_mtime)
+        latest = max(downloaded, key=lambda f: Path(f).stat().st_mtime)
         shutil.copy2(latest, multi_path)
-        latest.unlink()
+        Path(latest).unlink()
         print(f"多角度图已保存: {multi_path}", file=sys.stderr)
         return {"multi_image": multi_path}
     return None
@@ -368,9 +388,9 @@ def run_storyboard_panel(project: str, panel: str, prompt: str, ratio: str):
     panel_path = str(proj_dir / f"panel_{panel}.png")
     downloaded = download_result(r["submit_id"], str(proj_dir))
     if downloaded:
-        latest = max(Path(proj_dir).glob("*.png"), key=lambda f: f.stat().st_mtime)
+        latest = max(downloaded, key=lambda f: Path(f).stat().st_mtime)
         shutil.copy2(latest, panel_path)
-        latest.unlink()
+        Path(latest).unlink()
         print(f"分镜格{panel}已保存: {panel_path}", file=sys.stderr)
         return {"panel_image": panel_path}
     return None
